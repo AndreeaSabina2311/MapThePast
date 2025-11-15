@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CulturalMap - Itinerar Cultural</title>
+    <style>
+        :root {
+            --bg-light: #faf7e8;
+            --bg-blue: #e8eff7;
+            --primary-blue: #4a6fa5;
+            --primary-yellow: #f5e6a3;
+            --card-bg: #ffffffcc;
+            --text: #222;
+        }
+        [data-theme="dark"] {
+            --bg-light: #1e1e1e;
+            --bg-blue: #2a2f36;
+            --primary-blue: #7aa7ff;
+            --primary-yellow: #e6d48a;
+            --card-bg: #2c2c2ccc;
+            --text: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom, var(--bg-light), var(--bg-blue));
+            margin: 0;
+            padding: 0;
+            color: var(--text);
+            transition: 0.4s;
+        }
+        header {
+            background: linear-gradient(to right, var(--primary-yellow), #e9d98a);
+            padding: 30px;
+            text-align: center;
+            border-radius: 0 0 25px 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        .logo {
+            font-size: 2.6rem;
+            font-weight: 800;
+            color: var(--primary-blue);
+        }
+        .toggle-theme {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 5px 8px;
+            font-size: 1.2rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .container {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 900px;
+            margin: 40px auto;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.8s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        label {
+            font-weight: bold;
+            font-size: 1.15rem;
+        }
+        select, input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 12px;
+            border: 2px solid #c7d4e6;
+            margin-top: 10px;
+            transition: 0.25s;
+            color: var(--text);
+            background: var(--bg-light);
+        }
+        select:focus, input:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 8px var(--primary-blue);
+        }
+        button.action-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            margin-top: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        button.action-btn:hover {
+            transform: scale(1.04);
+        }
+        .itinerary {
+            margin-top: 25px;
+            animation: fadeIn 0.6s ease;
+        }
+        .day {
+            margin-bottom: 25px;
+            padding: 20px;
+            border-radius: 15px;
+            background: var(--card-bg);
+            border-left: 6px solid var(--primary-blue);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            animation: fadeIn 0.5s ease;
+            color: var(--text);
+        }
+        .day img {
+            width: 120px;
+            height: 90px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        .day h3 {
+            margin: 0;
+            color: var(--primary-blue);
+        }
+        .objectives {
+            margin-top: 5px;
+            padding-left: 0;
+        }
+        .objectives li {
+            margin-bottom: 5px;
+        }
+        .time {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <header>
+        <div class="logo">CulturalMap</div>
+        <button class="toggle-theme" onclick="toggleTheme()">🌙</button>
+    </header>
+
+    <div class="container">
+        <label for="city">Alege orașul</label>
+        <select id="city">
+            <option value="Paris">Paris</option>
+            <option value="Roma">Roma</option>
+        </select>
+
+        <label for="days">Număr de zile</label>
+        <input type="number" id="days" min="1" max="14" value="3" />
+
+        <button class="action-btn" onclick="generateItinerary()">Generează Itinerariul</button>
+
+        <div id="output" class="itinerary"></div>
+    </div>
+
+    <script>
+    
+
+        async function generateItinerary() {
+            const city = document.getElementById("city").value;
+            const days = parseInt(document.getElementById("days").value);
+            const out = document.getElementById("output");
+
+            try {
+                const response = await fetch('data.json'); // JSON extern
+                const data = await response.json();
+
+                if(!data[city]) {
+                    out.innerHTML = '<p>Nu există date pentru acest oraș.</p>';
+                    return;
+                }
+
+                let html = `<h2>Itinerariu pentru ${city}</h2>`;
+
+                for (let i = 1; i <= days; i++) {
+                    const dayIndex = (i - 1) % data[city].length;
+                    const dayActivities = data[city][dayIndex];
+
+                    html += `
+                        <div class="day">
+                            <div>
+                                <h3>Ziua ${i}</h3>
+                                <ul class="objectives">
+                                    ${dayActivities.map(a => `<li><span class='time'>${a.time}</span> ${a.activity}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>`;
+                }
+
+                out.innerHTML = html;
+
+            } catch (err) {
+                console.error(err);
+                out.innerHTML = '<p>Eroare la încărcarea datelor.</p>';
+            }
+        }
+
+        function toggleTheme() {
+            const current = document.body.getAttribute("data-theme");
+            document.body.setAttribute("data-theme", current === "dark" ? "light" : "dark");
+        }
+    </script>
+</body>
+</html>

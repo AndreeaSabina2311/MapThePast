@@ -1,0 +1,74 @@
+{
+  "Paris": [
+    [
+      {"time": "09:00", "activity": "Turnul Eiffel"},
+      {"time": "11:00", "activity": "Muzeul Louvre"},
+      {"time": "13:00", "activity": "Pauză de masă"},
+      {"time": "14:30", "activity": "Plimbare în Montmartre"},
+      {"time": "16:30", "activity": "Croazieră pe Sena"}
+    ],
+    [
+      {"time": "09:00", "activity": "Palatul Versailles"},
+      {"time": "12:30", "activity": "Pauză de masă"},
+      {"time": "14:00", "activity": "Grădinile Versailles"},
+      {"time": "16:00", "activity": "Transport înapoi la Paris"}
+    ],
+    [
+      {"time": "09:00", "activity": "Catedrala Notre-Dame"},
+      {"time": "11:00", "activity": "Conciergerie"},
+      {"time": "13:00", "activity": "Pauză de masă"},
+      {"time": "14:30", "activity": "Plimbare pe Champs-Élysées"},
+      {"time": "16:30", "activity": "Arcul de Triumf"}
+    ],
+    [
+      {"time": "09:00", "activity": "Muzeul Orsay"},
+      {"time": "11:00", "activity": "Plimbare pe Sena cu barca"},
+      {"time": "13:00", "activity": "Pauză de masă"},
+      {"time": "14:30", "activity": "Le Marais - cartierul artistic"},
+      {"time": "16:30", "activity": "Shopping în Galerie Lafayette"}
+    ],
+    [
+      {"time": "09:00", "activity": "Sainte-Chapelle"},
+      {"time": "11:00", "activity": "Muzeul Picasso"},
+      {"time": "13:00", "activity": "Pauză de masă"},
+      {"time": "14:30", "activity": "Plimbare în Jardin du Luxembourg"},
+      {"time": "16:30", "activity": "Cina într-un bistrou parizian"}
+    ]
+  ],
+  "Roma": [
+    [
+      {"time": "09:00", "activity": "Colosseum"},
+      {"time": "11:00", "activity": "Forumul Roman"},
+      {"time": "13:00", "activity": "Pauză de masă"},
+      {"time": "14:30", "activity": "Pantheon & Piazza Navona"},
+      {"time": "16:00", "activity": "Fântâna Trevi"}
+    ],
+    [
+      {"time": "09:00", "activity": "Vatican & Muzeele Vaticanului"},
+      {"time": "12:30", "activity": "Pauză de masă"},
+      {"time": "14:00", "activity": "Bazilica Sf. Petru"},
+      {"time": "16:00", "activity": "Piața Sf. Petru"}
+    ],
+    [
+      {"time": "09:00", "activity": "Piazza del Popolo"},
+      {"time": "11:00", "activity": "Via del Corso shopping"},
+      {"time": "13:00", "activity": "Pauză de masă"},
+      {"time": "14:30", "activity": "Trastevere - cartier boem"},
+      {"time": "16:30", "activity": "Piazza Venezia"}
+    ],
+    [
+      {"time": "09:00", "activity": "Castel Sant'Angelo"},
+      {"time": "11:00", "activity": "Ponte Sant'Angelo"},
+      {"time": "13:00", "activity": "Pauză de masă"},
+      {"time": "14:30", "activity": "Plimbare pe Via dei Fori Imperiali"},
+      {"time": "16:30", "activity": "Shopping La Rinascente"}
+    ],
+    [
+      {"time": "09:00", "activity": "Bazilica Santa Maria Maggiore"},
+      {"time": "11:00", "activity": "Termini Market"},
+      {"time": "13:00", "activity": "Pauză de masă"},
+      {"time": "14:30", "activity": "Gianicolo Hill"},
+      {"time": "16:30", "activity": "Cina tradițională italiană"}
+    ]
+  ]
+}
