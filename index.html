@@ -40,16 +40,46 @@
     <label for="city">Alege orașul</label>
     <select id="city">
         <option value="Paris">Paris</option>
-        <option value="Roma">Roma</option>
+        <option value="Madrid">Madrid</option>
+        <option value="Tokyo">Tokyo</option>
+        <option value="Rome">Rome</option>
+        <option value="Milan">Milan</option>
+        <option value="New York">New York</option>
+        <option value="Amsterdam">Amsterdam</option>
+        <option value="Sydney">Sydney</option>
+        <option value="Singapore">Singapore</option>
+        <option value="Barcelona">Barcelona</option>
+        <option value="Bangkok">Bangkok</option>
+        <option value="Istanbul">Istanbul</option>
+        <option value="London">London</option>
+        <option value="Hong Kong">Hong Kong</option>
+        <option value="Mecca">Mecca</option>
+        <option value="Dubai">Dubai</option>
+        <option value="Macau">Macau</option>
+        <option value="Kuala Lumpur">Kuala Lumpur</option>
+        <option value="Seoul">Seoul</option>
+        <option value="Beijing">Beijing</option>
+        <option value="Shanghai">Shanghai</option>
+        <option value="Lisbon">Lisbon</option>
+        <option value="Prague">Prague</option>
+        <option value="Vienna">Vienna</option>
+        <option value="Venice">Venice</option>
+        <option value="Los Angeles">Los Angeles</option>
+        <option value="San Francisco">San Francisco</option>
+        <option value="Mexico City">Mexico City</option>
+        <option value="Cairo">Cairo</option>
     </select>
 
     <label for="days">Număr de zile</label>
     <input type="number" id="days" min="1" max="14" value="3" />
     <button onclick="generateItinerary()">Generează Itinerariul</button>
 
-    <div id="recommendations"></div>
     <div id="output" class="itinerary"></div>
+
     <div id="map" style="height:450px; margin-top:20px;"></div>
+
+    <!-- RECOMANDĂRI MUTATE AICI -->
+    <div id="recommendations" style="margin-top:25px;"></div>
 
     <div id="faq">
         <h2>Întrebări frecvente</h2>
@@ -62,6 +92,30 @@
             <div class="faq-answer">Da, poți edita JSON-ul sau în viitor putem adăuga un formular de input.</div>
         </div>
     </div>
+
+<!-- Buton hamburger -->
+<div id="hamburgerBtn" style="position:fixed; top:10px; right:10px; font-size:30px; cursor:pointer; z-index:1000;">
+    ☰
+</div>
+
+<!-- Meniu lateral ascuns -->
+<div id="rightMenu" style="position:fixed; top:0; right:-320px; width:300px; height:100%; background:#f9f9f9; box-shadow:-2px 0 5px rgba(0,0,0,0.3); padding:20px; transition: right 0.3s; z-index:999;">
+    <h2>Profil utilizator</h2>
+    <select id="userSelect">
+        <option value="">Selectează cont</option>
+    </select>
+
+    <div id="pastTripsSection">
+        <h3>Călătoriile trecute</h3>
+        <ul id="pastTripsList"></ul>
+    </div>
+
+    <div id="toDoSection">
+        <h3>To Do List</h3>
+        <ul id="toDoList"></ul>
+    </div>
+</div>
+
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -97,8 +151,16 @@ function login(){
 function logout(){ localStorage.removeItem('currentUser'); document.getElementById('app-container').style.display='none'; document.getElementById('auth-container').style.display='block'; }
 function showRegister(){ document.getElementById('register-form').style.display='block'; document.getElementById('login-form').style.display='none'; }
 function showLogin(){ document.getElementById('register-form').style.display='none'; document.getElementById('login-form').style.display='block'; }
-function showApp(){ const u=localStorage.getItem('currentUser'); if(!u)return; document.getElementById('user-name').textContent=u; document.getElementById('auth-container').style.display='none'; document.getElementById('app-container').style.display='block'; }
+function showApp(){
+    const u=localStorage.getItem('currentUser');
+    if(!u)return;
+    document.getElementById('user-name').textContent=u;
+    document.getElementById('auth-container').style.display='none';
+    document.getElementById('app-container').style.display='block';
 
+    // Initializează harta lumii imediat după login
+    initWorldMap();
+}
 // ==== ITINERARY ====
 async function generateItinerary(){
     const city=document.getElementById("city").value;
@@ -131,12 +193,32 @@ async function generateItinerary(){
     }catch(err){ console.error(err); out.innerHTML='<p>Eroare la încărcarea datelor.</p>'; }
 }
 
-function showRecommendations(city){
-    const recOut=document.getElementById('recommendations');
-    const recs={"Paris":["Nu rata Turnul Eiffel","Vizitează Louvre dimineața","Croazieră pe Sena seara"],
-                "Roma":["Colosseum este un must","Vizitează Vaticanul în prima parte a zilei"]};
-    recOut.innerHTML=`<h3>Recomandări pentru ${city}</h3><ul>${recs[city].map(r=>`<li>${r}</li>`).join('')}</ul>`;
+function showRecommendations(city, day) {
+    const recOut = document.getElementById('recommendations');
+    recOut.innerHTML = ""; // golim înainte de a afișa
+
+    fetch('data.json')
+        .then(response => {
+            if (!response.ok) throw new Error('Nu s-a putut încărca data.json');
+            return response.json();
+        })
+        .then(data => {
+            // presupunem structura: { "Paris": { "Ziua 1": ["rec1", "rec2"], ... }, "Roma": {...} }
+            const recs = data[city]?.[day];
+            if (!recs || recs.length == 0) {
+                recOut.innerHTML = `<p>Nu există recomandări pentru ${city} în ${day}</p>`;
+                return;
+            }
+            recOut.innerHTML = `<h3>Recomandări pentru ${city}, ${day}</h3>
+                                <ul>${recs.map(r => `<li>${r}</li>`).join('')}</ul>`;
+        })
+        .catch(error => {
+            console.error(error);
+            recOut.innerHTML = `<p>Eroare la încărcarea recomandărilor.</p>`;
+        });
 }
+
+
 
 function showMap(dayActivities){
     const mapDiv = document.getElementById('map');
@@ -170,10 +252,50 @@ function toggleTheme(){
     document.body.setAttribute("data-theme", cur==='dark'?'light':'dark');
 }
 
+function initWorldMap() {
+    const mapDiv = document.getElementById('map');
+
+    if (map) {
+        map.remove();
+    }
+
+    // Harta lumii
+    map = L.map('map').setView([20, 0], 2); 
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+}
+
 // ==== FAQ ====
 document.addEventListener('DOMContentLoaded',()=>{ document.querySelectorAll('.faq-question').forEach(btn=>{
     btn.addEventListener('click',()=>{ const ans=btn.nextElementSibling; ans.style.display=ans.style.display==='block'?'none':'block'; }); });
 });
+// ==== FAQ POPUP ====
+
+
+document.getElementById('generateBtn').addEventListener('click', () => {
+    const city = document.getElementById('citySelect').value;
+    const day = document.getElementById('daySelect').value;
+
+    if (!city || !day) {
+        alert("Selectează orașul și ziua!");
+        return;
+    }
+
+    showRecommendations(city, day);
+    showMap(city, day);
+});
+
+// întrebările se deschid/închid
+document.querySelectorAll('.faq-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const answer = btn.nextElementSibling;
+        answer.style.display = answer.style.display === 'block' ? 'none' : 'block';
+    });
+});
+
+
 
 // ==== INIT ====
 window.onload=showApp;
