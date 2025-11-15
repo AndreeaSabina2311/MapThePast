@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CulturalMap - Itinerar Cultural</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="light">
+
+<header>
+    <div class="logo">CulturalMap</div>
+    <button class="toggle-theme" onclick="toggleTheme()">🌙</button>
+</header>
+
+<div class="container" id="auth-container">
+    <div id="register-form">
+        <h2>Înregistrare</h2>
+        <input type="text" id="reg-username" placeholder="Username"><br><br>
+        <input type="password" id="reg-password" placeholder="Parola"><br><br>
+        <button onclick="register()">Înregistrează-te</button>
+        <p>Ai deja cont? <a href="#" onclick="showLogin()">Loghează-te aici</a></p>
+        <p id="reg-msg" style="color:red"></p>
+    </div>
+
+    <div id="login-form" style="display:none;">
+        <h2>Login</h2>
+        <input type="text" id="login-username" placeholder="Username"><br><br>
+        <input type="password" id="login-password" placeholder="Parola"><br><br>
+        <button onclick="login()">Login</button>
+        <p>Nu ai cont? <a href="#" onclick="showRegister()">Înregistrează-te aici</a></p>
+        <p id="login-msg" style="color:red"></p>
+    </div>
+</div>
+
+<div class="container" id="app-container" style="display:none;">
+    <h2>Bun venit, <span id="user-name"></span>! <button onclick="logout()">Logout</button></h2>
+
+    <label for="city">Alege orașul</label>
+    <select id="city">
+        <option value="Paris">Paris</option>
+        <option value="Roma">Roma</option>
+    </select>
+
+    <label for="days">Număr de zile</label>
+    <input type="number" id="days" min="1" max="14" value="3" />
+    <button onclick="generateItinerary()">Generează Itinerariul</button>
+
+    <div id="recommendations"></div>
+    <div id="output" class="itinerary"></div>
+    <div id="map" style="height:450px; margin-top:20px;"></div>
+
+    <div id="faq">
+        <h2>Întrebări frecvente</h2>
+        <div class="faq-item">
+            <button class="faq-question">Cum aleg numărul de zile?</button>
+            <div class="faq-answer">Numărul de zile depinde de timpul tău disponibil și ce obiective vrei să vizitezi.</div>
+        </div>
+        <div class="faq-item">
+            <button class="faq-question">Pot adăuga obiective proprii?</button>
+            <div class="faq-answer">Da, poți edita JSON-ul sau în viitor putem adăuga un formular de input.</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+let map
+// ==== LOGIN & REGISTER ====
+function getUsers(){ return JSON.parse(localStorage.getItem('users')||'[]'); }
+function saveUsers(users){ localStorage.setItem('users', JSON.stringify(users)); }
+
+function register(){
+    const u=document.getElementById('reg-username').value.trim();
+    const p=document.getElementById('reg-password').value.trim();
+    const msg=document.getElementById('reg-msg');
+    if(!u||!p){ msg.textContent="Completează toate câmpurile!"; return; }
+    let users=getUsers();
+    if(users.find(x=>x.username===u)){ msg.textContent="Username deja existent!"; return; }
+    users.push({username:u,password:p});
+    saveUsers(users);
+    msg.style.color='green';
+    msg.textContent="Cont creat cu succes! Te poți loga acum.";
+}
+
+function login(){
+    const u=document.getElementById('login-username').value.trim();
+    const p=document.getElementById('login-password').value.trim();
+    const msg=document.getElementById('login-msg');
+    let users=getUsers();
+    let user=users.find(x=>x.username===u&&x.password===p);
+    if(user){ localStorage.setItem('currentUser',u); showApp(); } 
+    else{ msg.textContent="Username sau parola greșită!"; }
+}
+
+function logout(){ localStorage.removeItem('currentUser'); document.getElementById('app-container').style.display='none'; document.getElementById('auth-container').style.display='block'; }
+function showRegister(){ document.getElementById('register-form').style.display='block'; document.getElementById('login-form').style.display='none'; }
+function showLogin(){ document.getElementById('register-form').style.display='none'; document.getElementById('login-form').style.display='block'; }
+function showApp(){ const u=localStorage.getItem('currentUser'); if(!u)return; document.getElementById('user-name').textContent=u; document.getElementById('auth-container').style.display='none'; document.getElementById('app-container').style.display='block'; }
+
+// ==== ITINERARY ====
+async function generateItinerary(){
+    const city=document.getElementById("city").value;
+    const days=parseInt(document.getElementById("days").value);
+    const out=document.getElementById("output");
+    showRecommendations(city);
+    try{
+        const response=await fetch('data.json');
+        const data=await response.json();
+        if(!data[city]){ out.innerHTML='<p>Nu există date pentru acest oraș.</p>'; return; }
+        let html=`<h2>Itinerariu pentru ${city}</h2>`;
+        for(let i=1;i<=days;i++){
+            const dayIndex=(i-1)%data[city].length;
+            const dayActivities=data[city][dayIndex];
+            html+=`<div class="day">
+                <h3>Ziua ${i}</h3>
+                <ul class="objectives">${dayActivities.map(a=>`<li><span class='time'>${a.time}</span> ${a.activity}</li>`).join('')}</ul>
+            </div>`;
+        }
+        out.innerHTML=html;
+
+        // animații fade + slide-up
+        const daysEls = document.querySelectorAll('.day');
+        daysEls.forEach((dayEl,index)=>{
+            setTimeout(()=>{ dayEl.classList.add('show'); }, index*150);
+            // click pe card pentru harta
+            const dayIndex=(index)%data[city].length;
+            dayEl.addEventListener('click',()=>{ showMap(data[city][dayIndex]); });
+        });
+    }catch(err){ console.error(err); out.innerHTML='<p>Eroare la încărcarea datelor.</p>'; }
+}
+
+function showRecommendations(city){
+    const recOut=document.getElementById('recommendations');
+    const recs={"Paris":["Nu rata Turnul Eiffel","Vizitează Louvre dimineața","Croazieră pe Sena seara"],
+                "Roma":["Colosseum este un must","Vizitează Vaticanul în prima parte a zilei"]};
+    recOut.innerHTML=`<h3>Recomandări pentru ${city}</h3><ul>${recs[city].map(r=>`<li>${r}</li>`).join('')}</ul>`;
+}
+
+function showMap(dayActivities){
+    const mapDiv = document.getElementById('map');
+
+    // distruge harta veche dacă există
+    if(map) {
+        map.remove();
+    }
+
+    // alege prima locație ca centru
+    const firstLat = dayActivities[0]?.lat || 48.8566;
+    const firstLng = dayActivities[0]?.lng || 2.3522;
+
+    map = L.map('map').setView([firstLat, firstLng], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // adaugă marker-ele
+    dayActivities.forEach(act => {
+        if(act.lat && act.lng){
+            L.marker([act.lat, act.lng]).addTo(map).bindPopup(act.activity);
+        }
+    });
+}
+
+// ==== DARK MODE ====
+function toggleTheme(){
+    const cur=document.body.getAttribute("data-theme");
+    document.body.setAttribute("data-theme", cur==='dark'?'light':'dark');
+}
+
+// ==== FAQ ====
+document.addEventListener('DOMContentLoaded',()=>{ document.querySelectorAll('.faq-question').forEach(btn=>{
+    btn.addEventListener('click',()=>{ const ans=btn.nextElementSibling; ans.style.display=ans.style.display==='block'?'none':'block'; }); });
+});
+
+// ==== INIT ====
+window.onload=showApp;
+</script>
+</body>
+</html>
