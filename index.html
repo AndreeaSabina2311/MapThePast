@@ -9,9 +9,17 @@
 </head>
 <body data-theme="light">
 
-<header>
+<header style="position: relative;">
     <div class="logo">CulturalMap</div>
+
     <button class="toggle-theme" onclick="toggleTheme()">🌙</button>
+
+    <!-- BUTON HAMBURGER AICI -->
+    <div id="hamburgerBtn"
+         style="position:absolute; top:15px; right:20px; 
+                font-size:30px; cursor:pointer; z-index:1000;">
+        ☰
+    </div>
 </header>
 
 <div class="container" id="auth-container">
@@ -93,10 +101,7 @@
         </div>
     </div>
 
-<!-- Buton hamburger -->
-<div id="hamburgerBtn" style="position:fixed; top:10px; right:10px; font-size:30px; cursor:pointer; z-index:1000;">
-    ☰
-</div>
+
 
 <!-- Meniu lateral ascuns -->
 <div id="rightMenu" style="position:fixed; top:0; right:-320px; width:300px; height:100%; background:#f9f9f9; box-shadow:-2px 0 5px rgba(0,0,0,0.3); padding:20px; transition: right 0.3s; z-index:999;">
@@ -295,7 +300,15 @@ document.querySelectorAll('.faq-question').forEach(btn => {
     });
 });
 
-
+// HAMBURGER MENU
+document.getElementById("hamburgerBtn").onclick = function () {
+    const menu = document.getElementById("rightMenu");
+    if (menu.style.right === "0px") {
+        menu.style.right = "-320px";
+    } else {
+        menu.style.right = "0px";
+    }
+};
 
 // ==== INIT ====
 window.onload=showApp;
