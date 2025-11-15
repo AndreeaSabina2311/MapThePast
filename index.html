@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CulturalMap - Itinerar Cultural</title>
+<title>MapThePast - Itinerar Cultural</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <link rel="stylesheet" href="style.css">
 </head>
@@ -14,12 +14,14 @@
 
     <button class="toggle-theme" onclick="toggleTheme()">🌙</button>
 
-    <!-- BUTON HAMBURGER AICI -->
-    <div id="hamburgerBtn"
-         style="position:absolute; top:15px; right:20px; 
-                font-size:30px; cursor:pointer; z-index:1000;">
-        ☰
-    </div>
+    <!-- BUTON HISTORY & TODO -->
+    <button id="historyBtn" 
+            style="position:absolute; top:15px; right:20px; 
+                   padding:10px 15px; background:#4CAF50; color:white; 
+                   border:none; border-radius:5px; cursor:pointer; 
+                   font-size:14px; z-index:1000;">
+        📋 Trips & To-Do
+    </button>
 </header>
 
 <div class="container" id="auth-container">
@@ -101,23 +103,40 @@
         </div>
     </div>
 
-
-
-<!-- Meniu lateral ascuns -->
-<div id="rightMenu" style="position:fixed; top:0; right:-320px; width:300px; height:100%; background:#f9f9f9; box-shadow:-2px 0 5px rgba(0,0,0,0.3); padding:20px; transition: right 0.3s; z-index:999;">
-    <h2>Profil utilizator</h2>
-    <select id="userSelect">
-        <option value="">Selectează cont</option>
-    </select>
-
-    <div id="pastTripsSection">
-        <h3>Călătoriile trecute</h3>
-        <ul id="pastTripsList"></ul>
+<!-- Meniu lateral pentru History & To-Do -->
+<div id="rightMenu" style="display:none; position:fixed; top:0; right:0; width:320px; height:100%; background:#fff; box-shadow:-2px 0 10px rgba(0,0,0,0.3); padding:20px; z-index:999; overflow-y:auto;">
+    <button id="closeMenuBtn" style="float:right; background:#ff5252; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer;">✕</button>
+    <h2 style="margin-top:0;">My Travel Hub</h2>
+    
+    <div id="pastTripsSection" style="margin-bottom:30px;">
+        <h3>📍 Last Trips</h3>
+        <ul id="pastTripsList" style="list-style:none; padding:0;">
+            <li style="padding:10px; background:#f0f0f0; margin-bottom:8px; border-radius:5px;">
+                <strong>Paris</strong> - 3 days<br>
+                <small>Oct 2024</small>
+            </li>
+            <li style="padding:10px; background:#f0f0f0; margin-bottom:8px; border-radius:5px;">
+                <strong>Rome</strong> - 5 days<br>
+                <small>Sep 2024</small>
+            </li>
+        </ul>
+        <button onclick="saveCurrentTrip()" style="padding:8px 12px; background:#2196F3; color:white; border:none; border-radius:5px; cursor:pointer; width:100%;">
+            💾 Save Current Trip
+        </button>
     </div>
 
     <div id="toDoSection">
-        <h3>To Do List</h3>
-        <ul id="toDoList"></ul>
+        <h3>✅ To-Do List</h3>
+        <input type="text" id="todoInput" placeholder="Add new task..." style="width:calc(100% - 60px); padding:8px; border:1px solid #ccc; border-radius:3px;">
+        <button onclick="addTodo()" style="padding:8px 12px; background:#4CAF50; color:white; border:none; border-radius:3px; cursor:pointer;">+</button>
+        <ul id="toDoList" style="list-style:none; padding:0; margin-top:15px;">
+            <li style="padding:8px; background:#fff3cd; margin-bottom:5px; border-radius:3px; border-left:3px solid #ffc107;">
+                <input type="checkbox"> Book flights
+            </li>
+            <li style="padding:8px; background:#fff3cd; margin-bottom:5px; border-radius:3px; border-left:3px solid #ffc107;">
+                <input type="checkbox"> Reserve hotels
+            </li>
+        </ul>
     </div>
 </div>
 
@@ -165,6 +184,9 @@ function showApp(){
 
     // Initializează harta lumii imediat după login
     initWorldMap();
+
+    // Asigură-te că meniul e închis la login
+    document.getElementById('rightMenu').style.display = "none";
 }
 // ==== ITINERARY ====
 async function generateItinerary(){
@@ -279,7 +301,7 @@ document.addEventListener('DOMContentLoaded',()=>{ document.querySelectorAll('.f
 // ==== FAQ POPUP ====
 
 
-document.getElementById('generateBtn').addEventListener('click', () => {
+document.getElementById('generateBtn')?.addEventListener('click', () => {
     const city = document.getElementById('citySelect').value;
     const day = document.getElementById('daySelect').value;
 
@@ -300,15 +322,60 @@ document.querySelectorAll('.faq-question').forEach(btn => {
     });
 });
 
-// HAMBURGER MENU
-document.getElementById("hamburgerBtn").onclick = function () {
-    const menu = document.getElementById("rightMenu");
-    if (menu.style.right === "0px") {
-        menu.style.right = "-320px";
-    } else {
-        menu.style.right = "0px";
+// HAMBURGER MENU (NOW HISTORY BUTTON)
+const historyBtn = document.getElementById("historyBtn");
+const rightMenu = document.getElementById("rightMenu");
+const closeMenuBtn = document.getElementById("closeMenuBtn");
+
+historyBtn.addEventListener("click", () => {
+    const currentDisplay = rightMenu.style.display;
+    rightMenu.style.display = currentDisplay === 'block' ? 'none' : 'block';
+});
+
+closeMenuBtn.addEventListener("click", () => {
+    rightMenu.style.display = 'none';
+});
+
+function closeRightMenu() {
+    rightMenu.style.display = 'none';
+}
+
+function saveCurrentTrip() {
+    const city = document.getElementById("city").value;
+    const days = document.getElementById("days").value;
+    const list = document.getElementById("pastTripsList");
+    
+    const newTrip = document.createElement("li");
+    newTrip.style.cssText = "padding:10px; background:#f0f0f0; margin-bottom:8px; border-radius:5px;";
+    newTrip.innerHTML = `<strong>${city}</strong> - ${days} days<br><small>${new Date().toLocaleDateString()}</small>`;
+    
+    list.insertBefore(newTrip, list.firstChild);
+    alert(`Trip to ${city} saved!`);
+}
+
+function addTodo() {
+    const input = document.getElementById("todoInput");
+    const task = input.value.trim();
+    if (!task) return;
+    
+    const list = document.getElementById("toDoList");
+    const newTodo = document.createElement("li");
+    newTodo.style.cssText = "padding:8px; background:#fff3cd; margin-bottom:5px; border-radius:3px; border-left:3px solid #ffc107;";
+    newTodo.innerHTML = `<input type="checkbox" onchange="this.parentElement.style.textDecoration=this.checked?'line-through':'none'"> ${task}`;
+    
+    list.appendChild(newTodo);
+    input.value = "";
+}
+
+// Enter key for todo
+document.addEventListener('DOMContentLoaded', () => {
+    const todoInput = document.getElementById("todoInput");
+    if (todoInput) {
+        todoInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") addTodo();
+        });
     }
-};
+});
 
 // ==== INIT ====
 window.onload=showApp;
