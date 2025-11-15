@@ -5,147 +5,566 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>MapThePast - Itinerar Cultural</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<link rel="stylesheet" href="style.css">
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+body[data-theme="dark"] {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: #fff;
+}
+
+header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 20px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+body[data-theme="dark"] header {
+    background: rgba(26, 26, 46, 0.95);
+}
+
+.logo {
+    font-size: 28px;
+    font-weight: bold;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.header-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.toggle-theme, #historyBtn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.toggle-theme {
+    background: #667eea;
+    color: white;
+}
+
+#historyBtn {
+    background: #4CAF50;
+    color: white;
+}
+
+.toggle-theme:hover, #historyBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.auth-container {
+    max-width: 450px;
+    margin: 80px auto;
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+body[data-theme="dark"] .auth-container {
+    background: rgba(26, 26, 46, 0.9);
+    color: white;
+}
+
+.auth-container h2 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #667eea;
+}
+
+.auth-container input {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 16px;
+}
+
+.auth-container input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.auth-container button {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.auth-container button:hover {
+    transform: scale(1.05);
+}
+
+.app-container {
+    max-width: 1400px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.welcome-section {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+body[data-theme="dark"] .welcome-section {
+    background: rgba(26, 26, 46, 0.9);
+}
+
+.welcome-section h2 {
+    color: #667eea;
+}
+
+.welcome-section button {
+    padding: 10px 20px;
+    background: #ff5252;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.control-panel {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+}
+
+body[data-theme="dark"] .control-panel {
+    background: rgba(26, 26, 46, 0.9);
+}
+
+.control-panel label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.control-panel select, .control-panel input {
+    width: 100%;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 16px;
+}
+
+.generate-btn {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+#map {
+    height: 500px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+}
+
+.day {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 20px;
+    margin-bottom: 20px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.3s;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.day.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.day:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.day h3 {
+    color: #667eea;
+    margin-bottom: 15px;
+}
+
+.objectives {
+    list-style: none;
+}
+
+.objectives li {
+    padding: 10px;
+    margin-bottom: 5px;
+    background: white;
+    border-radius: 8px;
+}
+
+.time {
+    color: #764ba2;
+    font-weight: bold;
+    margin-right: 10px;
+}
+
+.restaurant-card {
+    min-width: 280px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.restaurant-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+}
+
+.restaurant-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+}
+
+.restaurant-info {
+    padding: 15px;
+}
+
+.restaurant-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #667eea;
+}
+
+.restaurant-cuisine {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+.stars {
+    color: #FFD700;
+    font-size: 16px;
+}
+
+#restaurantsSection {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+body[data-theme="dark"] #restaurantsSection {
+    background: rgba(26, 26, 46, 0.9);
+}
+
+#restaurantsSection h2 {
+    color: #667eea;
+    margin-bottom: 20px;
+}
+
+#restaurantsList {
+    display: flex;
+    overflow-x: auto;
+    gap: 20px;
+    padding: 20px 0;
+}
+
+.itinerary-section {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+body[data-theme="dark"] .itinerary-section {
+    background: rgba(26, 26, 46, 0.9);
+}
+
+#rightMenu {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 350px;
+    height: 100%;
+    background: white;
+    box-shadow: -5px 0 20px rgba(0,0,0,0.3);
+    padding: 30px;
+    z-index: 999;
+    overflow-y: auto;
+    display: none;
+}
+
+body[data-theme="dark"] #rightMenu {
+    background: rgba(26, 26, 46, 0.98);
+}
+
+#closeMenuBtn {
+    float: right;
+    background: #ff5252;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#pastTripsList, #toDoList {
+    list-style: none;
+    padding: 0;
+}
+
+#toDoList li {
+    padding: 12px;
+    background: #fff3cd;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.faq-section {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+}
+
+.faq-question {
+    width: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.faq-answer {
+    display: none;
+    padding: 15px;
+    background: #f5f7fa;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+</style>
 </head>
 <body data-theme="light">
 
-<header style="position: relative;">
-    <div class="logo">CulturalMap</div>
-
-    <button class="toggle-theme" onclick="toggleTheme()">🌙</button>
-
-    <!-- BUTON HISTORY & TODO -->
-    <button id="historyBtn" 
-            style="position:absolute; top:15px; right:20px; 
-                   padding:10px 15px; background:#4CAF50; color:white; 
-                   border:none; border-radius:5px; cursor:pointer; 
-                   font-size:14px; z-index:1000;">
-        📋 Trips & To-Do
-    </button>
+<header>
+    <div class="logo">✈️ CulturalMap</div>
+    <div class="header-buttons">
+        <button class="toggle-theme" onclick="toggleTheme()">🌙</button>
+        <button id="historyBtn">📋 Trips</button>
+    </div>
 </header>
 
-<div class="container" id="auth-container">
+<div class="auth-container" id="auth-container">
     <div id="register-form">
         <h2>Înregistrare</h2>
-        <input type="text" id="reg-username" placeholder="Username"><br><br>
-        <input type="password" id="reg-password" placeholder="Parola"><br><br>
+        <input type="text" id="reg-username" placeholder="Username">
+        <input type="password" id="reg-password" placeholder="Parola">
         <button onclick="register()">Înregistrează-te</button>
-        <p>Ai deja cont? <a href="#" onclick="showLogin()">Loghează-te aici</a></p>
-        <p id="reg-msg" style="color:red"></p>
+        <p style="text-align:center; margin-top:15px;">Ai cont? <a href="#" onclick="showLogin()">Login</a></p>
+        <p id="reg-msg" style="color:red;"></p>
     </div>
 
     <div id="login-form" style="display:none;">
         <h2>Login</h2>
-        <input type="text" id="login-username" placeholder="Username"><br><br>
-        <input type="password" id="login-password" placeholder="Parola"><br><br>
+        <input type="text" id="login-username" placeholder="Username">
+        <input type="password" id="login-password" placeholder="Parola">
         <button onclick="login()">Login</button>
-        <p>Nu ai cont? <a href="#" onclick="showRegister()">Înregistrează-te aici</a></p>
-        <p id="login-msg" style="color:red"></p>
+        <p style="text-align:center; margin-top:15px;">Nu ai cont? <a href="#" onclick="showRegister()">Înregistrare</a></p>
+        <p id="login-msg" style="color:red;"></p>
     </div>
 </div>
 
-<div class="container" id="app-container" style="display:none;">
-    <h2>Bun venit, <span id="user-name"></span>! <button onclick="logout()">Logout</button></h2>
-
-    <label for="city">Alege orașul</label>
-    <select id="city">
-        <option value="Paris">Paris</option>
-        <option value="Madrid">Madrid</option>
-        <option value="Tokyo">Tokyo</option>
-        <option value="Rome">Rome</option>
-        <option value="Milan">Milan</option>
-        <option value="New York">New York</option>
-        <option value="Amsterdam">Amsterdam</option>
-        <option value="Sydney">Sydney</option>
-        <option value="Singapore">Singapore</option>
-        <option value="Barcelona">Barcelona</option>
-        <option value="Bangkok">Bangkok</option>
-        <option value="Istanbul">Istanbul</option>
-        <option value="London">London</option>
-        <option value="Hong Kong">Hong Kong</option>
-        <option value="Mecca">Mecca</option>
-        <option value="Dubai">Dubai</option>
-        <option value="Macau">Macau</option>
-        <option value="Kuala Lumpur">Kuala Lumpur</option>
-        <option value="Seoul">Seoul</option>
-        <option value="Beijing">Beijing</option>
-        <option value="Shanghai">Shanghai</option>
-        <option value="Lisbon">Lisbon</option>
-        <option value="Prague">Prague</option>
-        <option value="Vienna">Vienna</option>
-        <option value="Venice">Venice</option>
-        <option value="Los Angeles">Los Angeles</option>
-        <option value="San Francisco">San Francisco</option>
-        <option value="Mexico City">Mexico City</option>
-        <option value="Cairo">Cairo</option>
-    </select>
-
-    <label for="days">Număr de zile</label>
-    <input type="number" id="days" min="1" max="14" value="3" />
-    <button onclick="generateItinerary()">Generează Itinerariul</button>
-
-    <div id="output" class="itinerary"></div>
-
-    <div id="map" style="height:450px; margin-top:20px;"></div>
-
-    <!-- RECOMANDĂRI MUTATE AICI -->
-    <div id="recommendations" style="margin-top:25px;"></div>
-
-    <div id="faq">
-        <h2>Întrebări frecvente</h2>
-        <div class="faq-item">
-            <button class="faq-question">Cum aleg numărul de zile?</button>
-            <div class="faq-answer">Numărul de zile depinde de timpul tău disponibil și ce obiective vrei să vizitezi.</div>
-        </div>
-        <div class="faq-item">
-            <button class="faq-question">Pot adăuga obiective proprii?</button>
-            <div class="faq-answer">Da, poți edita JSON-ul sau în viitor putem adăuga un formular de input.</div>
-        </div>
+<div class="app-container" id="app-container" style="display:none;">
+    <div class="welcome-section">
+        <h2>Bun venit, <span id="user-name"></span>! 👋</h2>
+        <button onclick="logout()">Logout</button>
     </div>
 
-<!-- Meniu lateral pentru History & To-Do -->
-<div id="rightMenu" style="display:none; position:fixed; top:0; right:0; width:320px; height:100%; background:#fff; box-shadow:-2px 0 10px rgba(0,0,0,0.3); padding:20px; z-index:999; overflow-y:auto;">
-    <button id="closeMenuBtn" style="float:right; background:#ff5252; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer;">✕</button>
-    <h2 style="margin-top:0;">My Travel Hub</h2>
-    
-    <div id="pastTripsSection" style="margin-bottom:30px;">
+    <div class="main-content">
+        <div class="control-panel">
+            <h2 style="color:#667eea; margin-bottom:20px;">📍 Planifică călătoria</h2>
+            <label for="city">Oraș</label>
+            <select id="city">
+                <option value="Paris">🇫🇷 Paris</option>
+                <option value="Madrid">🇪🇸 Madrid</option>
+                <option value="Tokyo">🇯🇵 Tokyo</option>
+                <option value="Rome">🇮🇹 Rome</option>
+                <option value="Milan">🇮🇹 Milan</option>
+                <option value="New York">🇺🇸 New York</option>
+                <option value="Amsterdam">🇳🇱 Amsterdam</option>
+                <option value="Sydney">🇦🇺 Sydney</option>
+                <option value="Singapore">🇸🇬 Singapore</option>
+                <option value="Barcelona">🇪🇸 Barcelona</option>
+                <option value="Bangkok">🇹🇭 Bangkok</option>
+                <option value="Istanbul">🇹🇷 Istanbul</option>
+                <option value="London">🇬🇧 London</option>
+                <option value="Hong Kong">🇭🇰 Hong Kong</option>
+                <option value="Mecca">🇸🇦 Mecca</option>
+                <option value="Dubai">🇦🇪 Dubai</option>
+                <option value="Macau">🇲🇴 Macau</option>
+                <option value="Kuala Lumpur">🇲🇾 Kuala Lumpur</option>
+                <option value="Seoul">🇰🇷 Seoul</option>
+                <option value="Beijing">🇨🇳 Beijing</option>
+                <option value="Shanghai">🇨🇳 Shanghai</option>
+                <option value="Lisbon">🇵🇹 Lisbon</option>
+                <option value="Prague">🇨🇿 Prague</option>
+                <option value="Vienna">🇦🇹 Vienna</option>
+                <option value="Venice">🇮🇹 Venice</option>
+                <option value="Los Angeles">🇺🇸 Los Angeles</option>
+                <option value="San Francisco">🇺🇸 San Francisco</option>
+                <option value="Mexico City">🇲🇽 Mexico City</option>
+                <option value="Cairo">🇪🇬 Cairo</option>
+            </select>
+
+            <label for="days">Zile</label>
+            <input type="number" id="days" min="1" max="14" value="3" />
+            <button class="generate-btn" onclick="generateItinerary()">🚀 Generează</button>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <div id="restaurantsSection" style="display:none;">
+        <h2>🍽️ Localuri din <span id="selectedCity"></span></h2>
+        <div id="restaurantsList"></div>
+    </div>
+
+    <div class="itinerary-section">
+        <div id="output"></div>
+    </div>
+
+    <div class="faq-section">
+        <h2>❓ FAQ</h2>
+        <button class="faq-question">Cum aleg zilele?</button>
+        <div class="faq-answer">Depinde de timp și obiective.</div>
+        <button class="faq-question">Pot adăuga obiective?</button>
+        <div class="faq-answer">Da, poți personaliza itinerariul.</div>
+    </div>
+</div>
+
+<div id="rightMenu">
+    <button id="closeMenuBtn">✕</button>
+    <h2>My Trips</h2>
+    <div style="margin:20px 0;">
         <h3>📍 Last Trips</h3>
-        <ul id="pastTripsList" style="list-style:none; padding:0;">
-            <li style="padding:10px; background:#f0f0f0; margin-bottom:8px; border-radius:5px;">
-                <strong>Paris</strong> - 3 days<br>
-                <small>Oct 2024</small>
-            </li>
-            <li style="padding:10px; background:#f0f0f0; margin-bottom:8px; border-radius:5px;">
-                <strong>Rome</strong> - 5 days<br>
-                <small>Sep 2024</small>
-            </li>
-        </ul>
-        <button onclick="saveCurrentTrip()" style="padding:8px 12px; background:#2196F3; color:white; border:none; border-radius:5px; cursor:pointer; width:100%;">
-            💾 Save Current Trip
-        </button>
+        <ul id="pastTripsList"></ul>
+        <button onclick="saveCurrentTrip()" style="width:100%; padding:10px; background:#2196F3; color:white; border:none; border-radius:8px; margin-top:10px; cursor:pointer;">💾 Save Trip</button>
     </div>
-
-    <div id="toDoSection">
-        <h3>✅ To-Do List</h3>
-        <input type="text" id="todoInput" placeholder="Add new task..." style="width:calc(100% - 60px); padding:8px; border:1px solid #ccc; border-radius:3px;">
-        <button onclick="addTodo()" style="padding:8px 12px; background:#4CAF50; color:white; border:none; border-radius:3px; cursor:pointer;">+</button>
-        <ul id="toDoList" style="list-style:none; padding:0; margin-top:15px;">
-            <li style="padding:8px; background:#fff3cd; margin-bottom:5px; border-radius:3px; border-left:3px solid #ffc107;">
-                <input type="checkbox"> Book flights
-            </li>
-            <li style="padding:8px; background:#fff3cd; margin-bottom:5px; border-radius:3px; border-left:3px solid #ffc107;">
-                <input type="checkbox"> Reserve hotels
-            </li>
-        </ul>
+    <div>
+        <h3>✅ To-Do</h3>
+        <div style="display:flex; gap:10px; margin:10px 0;">
+            <input type="text" id="todoInput" placeholder="Task..." style="flex:1; padding:10px; border:2px solid #e0e0e0; border-radius:8px;">
+            <button onclick="addTodo()" style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:8px; cursor:pointer;">+</button>
+        </div>
+        <ul id="toDoList"></ul>
     </div>
-</div>
-
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
-let map
-// ==== LOGIN & REGISTER ====
+let map;
+
+const restaurantsData = {
+    "Paris": [
+        { name: "Le Jules Verne", cuisine: "French", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "L'Ami Jean", cuisine: "Bistro", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Septime", cuisine: "Contemporary", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Rome": [
+        { name: "La Pergola", cuisine: "Italian", rating: 4.9, img: "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?w=400" },
+        { name: "Roscioli", cuisine: "Trattoria", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Tokyo": [
+        { name: "Sukiyabashi Jiro", cuisine: "Sushi", rating: 5.0, img: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400" },
+        { name: "Narisawa", cuisine: "Japanese", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Madrid": [
+        { name: "DiverXO", cuisine: "Avant-garde", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Botín", cuisine: "Spanish", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "London": [
+        { name: "The Ledbury", cuisine: "European", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Dishoom", cuisine: "Indian", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "New York": [
+        { name: "Eleven Madison Park", cuisine: "American", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Le Bernardin", cuisine: "Seafood", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ]
+};
+
 function getUsers(){ return JSON.parse(localStorage.getItem('users')||'[]'); }
 function saveUsers(users){ localStorage.setItem('users', JSON.stringify(users)); }
 
@@ -153,13 +572,13 @@ function register(){
     const u=document.getElementById('reg-username').value.trim();
     const p=document.getElementById('reg-password').value.trim();
     const msg=document.getElementById('reg-msg');
-    if(!u||!p){ msg.textContent="Completează toate câmpurile!"; return; }
+    if(!u||!p){ msg.textContent="Completează toate!"; return; }
     let users=getUsers();
-    if(users.find(x=>x.username===u)){ msg.textContent="Username deja existent!"; return; }
+    if(users.find(x=>x.username===u)){ msg.textContent="Username existent!"; return; }
     users.push({username:u,password:p});
     saveUsers(users);
     msg.style.color='green';
-    msg.textContent="Cont creat cu succes! Te poți loga acum.";
+    msg.textContent="Cont creat! Loghează-te.";
 }
 
 function login(){
@@ -169,103 +588,93 @@ function login(){
     let users=getUsers();
     let user=users.find(x=>x.username===u&&x.password===p);
     if(user){ localStorage.setItem('currentUser',u); showApp(); } 
-    else{ msg.textContent="Username sau parola greșită!"; }
+    else{ msg.textContent="Date greșite!"; }
 }
 
-function logout(){ localStorage.removeItem('currentUser'); document.getElementById('app-container').style.display='none'; document.getElementById('auth-container').style.display='block'; }
-function showRegister(){ document.getElementById('register-form').style.display='block'; document.getElementById('login-form').style.display='none'; }
-function showLogin(){ document.getElementById('register-form').style.display='none'; document.getElementById('login-form').style.display='block'; }
+function logout(){ 
+    localStorage.removeItem('currentUser'); 
+    document.getElementById('app-container').style.display='none'; 
+    document.getElementById('auth-container').style.display='block'; 
+}
+
+function showRegister(){ 
+    document.getElementById('register-form').style.display='block'; 
+    document.getElementById('login-form').style.display='none'; 
+}
+
+function showLogin(){ 
+    document.getElementById('register-form').style.display='none'; 
+    document.getElementById('login-form').style.display='block'; 
+}
+
 function showApp(){
     const u=localStorage.getItem('currentUser');
     if(!u)return;
     document.getElementById('user-name').textContent=u;
     document.getElementById('auth-container').style.display='none';
     document.getElementById('app-container').style.display='block';
-
-    // Initializează harta lumii imediat după login
     initWorldMap();
-
-    // Asigură-te că meniul e închis la login
-    document.getElementById('rightMenu').style.display = "none";
 }
-// ==== ITINERARY ====
-async function generateItinerary(){
+
+function generateItinerary(){
     const city=document.getElementById("city").value;
     const days=parseInt(document.getElementById("days").value);
     const out=document.getElementById("output");
-    showRecommendations(city);
-    try{
-        const response=await fetch('data.json');
-        const data=await response.json();
-        if(!data[city]){ out.innerHTML='<p>Nu există date pentru acest oraș.</p>'; return; }
-        let html=`<h2>Itinerariu pentru ${city}</h2>`;
-        for(let i=1;i<=days;i++){
-            const dayIndex=(i-1)%data[city].length;
-            const dayActivities=data[city][dayIndex];
-            html+=`<div class="day">
-                <h3>Ziua ${i}</h3>
-                <ul class="objectives">${dayActivities.map(a=>`<li><span class='time'>${a.time}</span> ${a.activity}</li>`).join('')}</ul>
-            </div>`;
-        }
-        out.innerHTML=html;
-
-        // animații fade + slide-up
-        const daysEls = document.querySelectorAll('.day');
-        daysEls.forEach((dayEl,index)=>{
-            setTimeout(()=>{ dayEl.classList.add('show'); }, index*150);
-            // click pe card pentru harta
-            const dayIndex=(index)%data[city].length;
-            dayEl.addEventListener('click',()=>{ showMap(data[city][dayIndex]); });
-        });
-    }catch(err){ console.error(err); out.innerHTML='<p>Eroare la încărcarea datelor.</p>'; }
-}
-
-function showRecommendations(city, day) {
-    const recOut = document.getElementById('recommendations');
-    recOut.innerHTML = ""; // golim înainte de a afișa
-
+    
+    showRestaurants(city);
+    
     fetch('data.json')
-        .then(response => {
-            if (!response.ok) throw new Error('Nu s-a putut încărca data.json');
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            // presupunem structura: { "Paris": { "Ziua 1": ["rec1", "rec2"], ... }, "Roma": {...} }
-            const recs = data[city]?.[day];
-            if (!recs || recs.length == 0) {
-                recOut.innerHTML = `<p>Nu există recomandări pentru ${city} în ${day}</p>`;
-                return;
+            if(!data[city]){ 
+                out.innerHTML='<p>Nu există date pentru acest oraș.</p>'; 
+                return; 
             }
-            recOut.innerHTML = `<h3>Recomandări pentru ${city}, ${day}</h3>
-                                <ul>${recs.map(r => `<li>${r}</li>`).join('')}</ul>`;
+            
+            let html=`<h2>Itinerariu pentru ${city}</h2>`;
+            for(let i=1; i<=days; i++){
+                const dayIndex=(i-1)%data[city].length;
+                const dayActivities=data[city][dayIndex];
+                html+=`<div class="day">
+                    <h3>Ziua ${i}</h3>
+                    <ul class="objectives">
+                        ${dayActivities.map(a=>`<li><span class="time">${a.time}</span> ${a.activity}</li>`).join('')}
+                    </ul>
+                </div>`;
+            }
+            out.innerHTML=html;
+            
+            // Afișează harta pentru prima zi
+            if(data[city][0] && data[city][0].length > 0){
+                showMap(data[city][0]);
+            }
+            
+            const daysEls = document.querySelectorAll('.day');
+            daysEls.forEach((dayEl,index)=>{
+                setTimeout(()=>{ dayEl.classList.add('show'); }, index*150);
+                const dayIndex=(index)%data[city].length;
+                dayEl.addEventListener('click',()=>{ 
+                    showMap(data[city][dayIndex]); 
+                });
+            });
         })
-        .catch(error => {
-            console.error(error);
-            recOut.innerHTML = `<p>Eroare la încărcarea recomandărilor.</p>`;
+        .catch(err => {
+            console.error(err);
+            out.innerHTML='<p>Eroare la încărcarea datelor.</p>';
         });
 }
-
-
 
 function showMap(dayActivities){
-    const mapDiv = document.getElementById('map');
-
-    // distruge harta veche dacă există
-    if(map) {
-        map.remove();
-    }
-
-    // alege prima locație ca centru
+    if(map) map.remove();
+    
     const firstLat = dayActivities[0]?.lat || 48.8566;
     const firstLng = dayActivities[0]?.lng || 2.3522;
-
+    
     map = L.map('map').setView([firstLat, firstLng], 13);
-
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
-
-    // adaugă marker-ele
+    
     dayActivities.forEach(act => {
         if(act.lat && act.lng){
             L.marker([act.lat, act.lng]).addTo(map).bindPopup(act.activity);
@@ -273,48 +682,88 @@ function showMap(dayActivities){
     });
 }
 
-// ==== DARK MODE ====
+function showRestaurants(city) {
+    const section = document.getElementById('restaurantsSection');
+    const citySpan = document.getElementById('selectedCity');
+    const list = document.getElementById('restaurantsList');
+    
+    citySpan.textContent = city;
+    const restaurants = restaurantsData[city] || [];
+    
+    if (restaurants.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = 'block';
+    list.innerHTML = '';
+    
+    restaurants.forEach(rest => {
+        const stars = '⭐'.repeat(Math.floor(rest.rating));
+        const card = document.createElement('div');
+        card.className = 'restaurant-card';
+        card.innerHTML = `
+            <img src="${rest.img}" class="restaurant-img" alt="${rest.name}">
+            <div class="restaurant-info">
+                <div class="restaurant-name">${rest.name}</div>
+                <div class="restaurant-cuisine">${rest.cuisine}</div>
+                <div><span class="stars">${stars}</span> ${rest.rating}</div>
+            </div>
+        `;
+        list.appendChild(card);
+    });
+}
+
+function initWorldMap() {
+    if(map) map.remove();
+    map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+}
+
 function toggleTheme(){
     const cur=document.body.getAttribute("data-theme");
     document.body.setAttribute("data-theme", cur==='dark'?'light':'dark');
 }
 
-function initWorldMap() {
-    const mapDiv = document.getElementById('map');
+const historyBtn = document.getElementById("historyBtn");
+const rightMenu = document.getElementById("rightMenu");
+const closeMenuBtn = document.getElementById("closeMenuBtn");
 
-    if (map) {
-        map.remove();
-    }
+historyBtn.addEventListener("click", () => {
+    rightMenu.style.display = rightMenu.style.display === 'block' ? 'none' : 'block';
+});
 
-    // Harta lumii
-    map = L.map('map').setView([20, 0], 2); 
+closeMenuBtn.addEventListener("click", () => {
+    rightMenu.style.display = 'none';
+});
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
+function saveCurrentTrip() {
+    const city = document.getElementById("city").value;
+    const days = document.getElementById("days").value;
+    const list = document.getElementById("pastTripsList");
+    const li = document.createElement("li");
+    li.style.cssText = "padding:10px; background:#f0f0f0; margin:5px 0; border-radius:8px;";
+    li.innerHTML = `<strong>${city}</strong> - ${days} zile<br><small>${new Date().toLocaleDateString()}</small>`;
+    list.insertBefore(li, list.firstChild);
+    alert(`Trip salvat: ${city}`);
 }
 
-// ==== FAQ ====
-document.addEventListener('DOMContentLoaded',()=>{ document.querySelectorAll('.faq-question').forEach(btn=>{
-    btn.addEventListener('click',()=>{ const ans=btn.nextElementSibling; ans.style.display=ans.style.display==='block'?'none':'block'; }); });
-});
-// ==== FAQ POPUP ====
+function addTodo() {
+    const input = document.getElementById("todoInput");
+    const task = input.value.trim();
+    if (!task) return;
+    const list = document.getElementById("toDoList");
+    const li = document.createElement("li");
+    li.innerHTML = `<span><input type="checkbox"> ${task}</span>
+        <button onclick="this.parentElement.remove()" style="background:#ff5252; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">🗑️</button>`;
+    list.appendChild(li);
+    input.value = "";
+}
 
-
-document.getElementById('generateBtn')?.addEventListener('click', () => {
-    const city = document.getElementById('citySelect').value;
-    const day = document.getElementById('daySelect').value;
-
-    if (!city || !day) {
-        alert("Selectează orașul și ziua!");
-        return;
-    }
-
-    showRecommendations(city, day);
-    showMap(city, day);
+document.getElementById("todoInput")?.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") addTodo();
 });
 
-// întrebările se deschid/închid
 document.querySelectorAll('.faq-question').forEach(btn => {
     btn.addEventListener('click', () => {
         const answer = btn.nextElementSibling;
@@ -322,63 +771,10 @@ document.querySelectorAll('.faq-question').forEach(btn => {
     });
 });
 
-// HAMBURGER MENU (NOW HISTORY BUTTON)
-const historyBtn = document.getElementById("historyBtn");
-const rightMenu = document.getElementById("rightMenu");
-const closeMenuBtn = document.getElementById("closeMenuBtn");
-
-historyBtn.addEventListener("click", () => {
-    const currentDisplay = rightMenu.style.display;
-    rightMenu.style.display = currentDisplay === 'block' ? 'none' : 'block';
-});
-
-closeMenuBtn.addEventListener("click", () => {
-    rightMenu.style.display = 'none';
-});
-
-function closeRightMenu() {
-    rightMenu.style.display = 'none';
-}
-
-function saveCurrentTrip() {
-    const city = document.getElementById("city").value;
-    const days = document.getElementById("days").value;
-    const list = document.getElementById("pastTripsList");
-    
-    const newTrip = document.createElement("li");
-    newTrip.style.cssText = "padding:10px; background:#f0f0f0; margin-bottom:8px; border-radius:5px;";
-    newTrip.innerHTML = `<strong>${city}</strong> - ${days} days<br><small>${new Date().toLocaleDateString()}</small>`;
-    
-    list.insertBefore(newTrip, list.firstChild);
-    alert(`Trip to ${city} saved!`);
-}
-
-function addTodo() {
-    const input = document.getElementById("todoInput");
-    const task = input.value.trim();
-    if (!task) return;
-    
-    const list = document.getElementById("toDoList");
-    const newTodo = document.createElement("li");
-    newTodo.style.cssText = "padding:8px; background:#fff3cd; margin-bottom:5px; border-radius:3px; border-left:3px solid #ffc107;";
-    newTodo.innerHTML = `<input type="checkbox" onchange="this.parentElement.style.textDecoration=this.checked?'line-through':'none'"> ${task}`;
-    
-    list.appendChild(newTodo);
-    input.value = "";
-}
-
-// Enter key for todo
-document.addEventListener('DOMContentLoaded', () => {
-    const todoInput = document.getElementById("todoInput");
-    if (todoInput) {
-        todoInput.addEventListener("keypress", (e) => {
-            if (e.key === "Enter") addTodo();
-        });
-    }
-});
-
-// ==== INIT ====
-window.onload=showApp;
+window.onload=()=>{
+    const u=localStorage.getItem('currentUser');
+    if(u) showApp();
+};
 </script>
 </body>
 </html>
