@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MapThePast - Itinerar Cultural</title>
+<title>CulturalMap - Itinerar Cultural</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <style>
 * {
@@ -208,6 +208,11 @@ body[data-theme="dark"] .control-panel {
     font-size: 16px;
 }
 
+.control-panel select:focus, .control-panel input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
 .generate-btn {
     width: 100%;
     padding: 15px;
@@ -270,6 +275,7 @@ body[data-theme="dark"] .control-panel {
 }
 
 .restaurant-card {
+    /* Folosit acum și pentru link (a) */
     min-width: 280px;
     background: white;
     border-radius: 15px;
@@ -277,6 +283,9 @@ body[data-theme="dark"] .control-panel {
     overflow: hidden;
     transition: all 0.3s;
     cursor: pointer;
+    text-decoration: none; /* Elimină sublinierea link-ului */
+    color: inherit; /* Păstrează culoarea textului */
+    display: block; /* Face ca link-ul să ocupe tot spațiul cardului */
 }
 
 .restaurant-card:hover {
@@ -336,18 +345,6 @@ body[data-theme="dark"] #restaurantsSection {
     padding: 20px 0;
 }
 
-.itinerary-section {
-    background: white;
-    padding: 30px;
-    border-radius: 20px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-    margin-bottom: 30px;
-}
-
-body[data-theme="dark"] .itinerary-section {
-    background: rgba(26, 26, 46, 0.9);
-}
-
 #rightMenu {
     position: fixed;
     top: 0;
@@ -376,7 +373,7 @@ body[data-theme="dark"] #rightMenu {
     cursor: pointer;
 }
 
-#pastTripsList, #toDoList {
+#pastTripsList, #futureTripsList, #toDoList {
     list-style: none;
     padding: 0;
 }
@@ -415,12 +412,70 @@ body[data-theme="dark"] #rightMenu {
     border-radius: 10px;
     margin-bottom: 15px;
 }
+
+.edit-controls {
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+
+.add-objective-select {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 5px;
+}
+
+.add-objective-btn {
+    margin-top: 5px;
+    padding: 8px 15px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.move-select {
+    float: right;
+    margin-left: 10px;
+    padding: 4px;
+}
+
+.trip-date-input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-size: 14px;
+}
+
+.trip-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.badge-past {
+    background: #ff9800;
+    color: white;
+}
+
+.badge-future {
+    background: #4CAF50;
+    color: white;
+}
+
 </style>
 </head>
 <body data-theme="light">
 
 <header>
-    <div class="logo">✈️ CulturalMap</div>
+    <div class="logo">✈ CulturalMap</div>
     <div class="header-buttons">
         <button class="toggle-theme" onclick="toggleTheme()">🌙</button>
         <button id="historyBtn">📋 Trips</button>
@@ -498,7 +553,7 @@ body[data-theme="dark"] #rightMenu {
     </div>
 
     <div id="restaurantsSection" style="display:none;">
-        <h2>🍽️ Localuri din <span id="selectedCity"></span></h2>
+        <h2>🍽 Localuri din <span id="selectedCity"></span></h2>
         <div id="restaurantsList"></div>
     </div>
 
@@ -518,11 +573,18 @@ body[data-theme="dark"] #rightMenu {
 <div id="rightMenu">
     <button id="closeMenuBtn">✕</button>
     <h2>My Trips</h2>
+
     <div style="margin:20px 0;">
         <h3>📍 Last Trips</h3>
         <ul id="pastTripsList"></ul>
-        <button onclick="saveCurrentTrip()" style="width:100%; padding:10px; background:#2196F3; color:white; border:none; border-radius:8px; margin-top:10px; cursor:pointer;">💾 Save Trip</button>
     </div>
+
+    <div style="margin:20px 0;">
+        <h3>📅 Future Trips</h3>
+        <ul id="futureTripsList"></ul>
+        <button onclick="saveCurrentTrip()" style="width:100%; padding:10px; background:#2196F3; color:white; border:none; border-radius:8px; margin-top:10px; cursor:pointer;">💾 Save Current Trip</button>
+    </div>
+
     <div>
         <h3>✅ To-Do</h3>
         <div style="display:flex; gap:10px; margin:10px 0;">
@@ -533,37 +595,223 @@ body[data-theme="dark"] #rightMenu {
     </div>
 </div>
 
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 let map;
+let editableItinerary = [];
+let currentCity = "";
+let allCityAttractions = [];
+let currentTripIndex = null;
+let isViewingTrip = false;
 
+// DATE RESTAURANTE EXTINSE
 const restaurantsData = {
     "Paris": [
         { name: "Le Jules Verne", cuisine: "French", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
         { name: "L'Ami Jean", cuisine: "Bistro", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
-        { name: "Septime", cuisine: "Contemporary", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+        { name: "Septime", cuisine: "Contemporary", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Clamato", cuisine: "Seafood", rating: 4.5, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Frenchie", cuisine: "Modern French", rating: 4.6, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
     ],
     "Rome": [
         { name: "La Pergola", cuisine: "Italian", rating: 4.9, img: "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?w=400" },
-        { name: "Roscioli", cuisine: "Trattoria", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+        { name: "Roscioli", cuisine: "Trattoria", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Taverna Trilussa", cuisine: "Roman", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Checchino dal 1887", cuisine: "Traditional", rating: 4.4, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Imàgo", cuisine: "Fine Dining", rating: 4.8, img: "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?w=400" }
     ],
     "Tokyo": [
         { name: "Sukiyabashi Jiro", cuisine: "Sushi", rating: 5.0, img: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400" },
-        { name: "Narisawa", cuisine: "Japanese", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+        { name: "Narisawa", cuisine: "Japanese", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Kanda", cuisine: "Japanese", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Den", cuisine: "Creative Japanese", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Afuri Ramen", cuisine: "Ramen", rating: 4.5, img: "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=400" }
     ],
     "Madrid": [
         { name: "DiverXO", cuisine: "Avant-garde", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
-        { name: "Botín", cuisine: "Spanish", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+        { name: "Botín", cuisine: "Spanish", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "StreetXo", cuisine: "Fusion", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Cebo", cuisine: "Contemporary", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Casa Lucio", cuisine: "Spanish/Classic", rating: 4.4, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
     ],
     "London": [
         { name: "The Ledbury", cuisine: "European", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
-        { name: "Dishoom", cuisine: "Indian", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+        { name: "Dishoom", cuisine: "Indian", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Core by Clare Smyth", cuisine: "Modern British", rating: 4.8, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "The Palomar", cuisine: "Modern Jerusalem", rating: 4.6, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Padella", cuisine: "Pasta", rating: 4.5, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
     ],
     "New York": [
         { name: "Eleven Madison Park", cuisine: "American", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
-        { name: "Le Bernardin", cuisine: "Seafood", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+        { name: "Le Bernardin", cuisine: "Seafood", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Per Se", cuisine: "Contemporary", rating: 4.8, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Gramercy Tavern", cuisine: "American", rating: 4.6, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Via Carota", cuisine: "Italian", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Milan": [
+        { name: "Ristorante Cracco", cuisine: "Fine Dining", rating: 4.8, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Seta", cuisine: "Italian", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "D'O", cuisine: "Modern Italian", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Piz", cuisine: "Pizza", rating: 4.5, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "L'Immagine Bistrot", cuisine: "Bistrot", rating: 4.4, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Amsterdam": [
+        { name: "RIJKS", cuisine: "Modern Dutch", rating: 4.8, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Ciel Bleu", cuisine: "European", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Bussia", cuisine: "Italian", rating: 4.6, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "De Kas", cuisine: "Farm to Table", rating: 4.5, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Foodhallen", cuisine: "Street Food", rating: 4.3, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Sydney": [
+        { name: "Quay", cuisine: "Australian", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Aria", cuisine: "Modern Australian", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Bennelong", cuisine: "Contemporary", rating: 4.8, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Tetsuya's", cuisine: "Japanese Fusion", rating: 4.6, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Mr. Wong", cuisine: "Chinese", rating: 4.5, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Singapore": [
+        { name: "Odette", cuisine: "French", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Les Amis", cuisine: "French", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Burnt Ends", cuisine: "BBQ", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Candlenut", cuisine: "Peranakan", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Tiong Bahru Market", cuisine: "Hawker", rating: 4.3, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Barcelona": [
+        { name: "Disfrutar", cuisine: "Avant-garde", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Tickets", cuisine: "Tapas", rating: 4.8, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "El Nacional", cuisine: "Spanish", rating: 4.5, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Cinc Sentits", cuisine: "Catalan", rating: 4.7, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Bar Cañete", cuisine: "Tapas", rating: 4.4, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Bangkok": [
+        { name: "Gaggan", cuisine: "Progressive Indian", rating: 4.9, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Sorn", cuisine: "Southern Thai", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Le Du", cuisine: "Modern Thai", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Blue Elephant", cuisine: "Royal Thai", rating: 4.5, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Thipsamai Pad Thai", cuisine: "Street Food", rating: 4.4, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Istanbul": [
+        { name: "Mikla", cuisine: "Anatolian", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Nicole", cuisine: "Mediterranean", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Neolokal", cuisine: "New Anatolian", rating: 4.6, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Balikci Sabahattin", cuisine: "Seafood", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Çiya Sofrası", cuisine: "Regional Turkish", rating: 4.4, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Hong Kong": [
+        { name: "Caprice", cuisine: "French", rating: 4.9, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Amber", cuisine: "French", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Lung King Heen", cuisine: "Cantonese", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Yardbird", cuisine: "Japanese Izakaya", rating: 4.5, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Otto e Mezzo Bombana", cuisine: "Italian", rating: 4.6, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Mecca": [
+        { name: "Al Baik", cuisine: "Fast Food (Chicken)", rating: 4.5, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "The Venue", cuisine: "International", rating: 4.4, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Al Tazaj", cuisine: "Arabic Chicken", rating: 4.3, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Al Shurafa", cuisine: "Middle Eastern", rating: 4.2, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Abu Jbara", cuisine: "Levantine", rating: 4.1, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" }
+    ],
+    "Dubai": [
+        { name: "Pierchic", cuisine: "Seafood", rating: 4.8, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Armani/Ristorante", cuisine: "Italian", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Zuma", cuisine: "Japanese", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Ossiano", cuisine: "Fine Dining", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Al Fanar Restaurant", cuisine: "Emirati", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Macau": [
+        { name: "Robuchon au Dôme", cuisine: "French", rating: 5.0, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "The Eight", cuisine: "Cantonese", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Wing Lei Palace", cuisine: "Cantonese", rating: 4.8, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "A Lorcha", cuisine: "Macanese", rating: 4.6, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Antonio", cuisine: "Portuguese", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Kuala Lumpur": [
+        { name: "Dewakan", cuisine: "Modern Malaysian", rating: 4.8, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Cilantro", cuisine: "French-Japanese", rating: 4.7, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Marble 8", cuisine: "Steakhouse", rating: 4.6, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Bijan", cuisine: "Malay Fine Dining", rating: 4.5, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Hutong Food Court", cuisine: "Street Food", rating: 4.3, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Seoul": [
+        { name: "Mingles", cuisine: "Korean Contemporary", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Jungsik", cuisine: "New Korean", rating: 4.8, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "La Yeon", cuisine: "Traditional Korean", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Gwangjang Market", cuisine: "Street Food", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Tosokchon Samgyetang", cuisine: "Ginseng Chicken Soup", rating: 4.4, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Beijing": [
+        { name: "King's Joy", cuisine: "Vegetarian", rating: 4.8, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Temple Restaurant Beijing", cuisine: "European", rating: 4.7, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Da Dong Roast Duck", cuisine: "Peking Duck", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Jing Yaa Tang", cuisine: "Chinese", rating: 4.5, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Hutong Cuisine", cuisine: "Local Beijing", rating: 4.3, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Shanghai": [
+        { name: "Ultraviolet by Paul Pairet", cuisine: "Avant-garde", rating: 5.0, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Taian Table", cuisine: "Contemporary", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Jean-Georges", cuisine: "French", rating: 4.8, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Lost Heaven", cuisine: "Yunnan Cuisine", rating: 4.6, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Jian Guo 328", cuisine: "Local Shanghai", rating: 4.5, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Lisbon": [
+        { name: "Alma", cuisine: "Contemporary Portuguese", rating: 4.8, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Belcanto", cuisine: "Portuguese Fine Dining", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Prado", cuisine: "Farm to Table", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Time Out Market Lisboa", cuisine: "Variety", rating: 4.4, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Cervejaria Ramiro", cuisine: "Seafood", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Prague": [
+        { name: "La Degustation Bohême Bourgeoise", cuisine: "Czech Fine Dining", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Field", cuisine: "Modern European", rating: 4.7, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Eska", cuisine: "New Czech", rating: 4.6, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Sansho", cuisine: "Asian Fusion", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Lokal", cuisine: "Traditional Czech", rating: 4.4, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Vienna": [
+        { name: "Steirereck", cuisine: "Austrian Fine Dining", rating: 4.9, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Amador", cuisine: "Contemporary", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Zum Schwarzen Kameel", cuisine: "Traditional", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Plachutta", cuisine: "Tafelspitz", rating: 4.5, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Figlmüller", cuisine: "Schnitzel", rating: 4.4, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "Venice": [
+        { name: "Quadri", cuisine: "Italian Fine Dining", rating: 4.8, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Local", cuisine: "Venetian", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Antiche Carampane", cuisine: "Seafood", rating: 4.6, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Osteria Alle Testiere", cuisine: "Seafood", rating: 4.5, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Al Covo", cuisine: "Venetian", rating: 4.4, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" }
+    ],
+    "Los Angeles": [
+        { name: "Providence", cuisine: "Seafood", rating: 4.8, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "n/naka", cuisine: "Kaiseki", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Bestia", cuisine: "Italian", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Osteria Mozza", cuisine: "Italian", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "République", cuisine: "French", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" }
+    ],
+    "San Francisco": [
+        { name: "The French Laundry", cuisine: "French", rating: 4.9, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Benu", cuisine: "Asian Fusion", rating: 4.8, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "State Bird Provisions", cuisine: "American Dim Sum", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Foreign Cinema", cuisine: "Mediterranean", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Zuni Café", cuisine: "American", rating: 4.4, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Mexico City": [
+        { name: "Pujol", cuisine: "Mexican Fine Dining", rating: 4.9, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Quintonil", cuisine: "Mexican", rating: 4.8, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Sud777", cuisine: "Mexican", rating: 4.7, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Contramar", cuisine: "Seafood", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Máximo Bistrot", cuisine: "Seasonal", rating: 4.6, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
+    ],
+    "Cairo": [
+        { name: "Abou Tarek Koshary", cuisine: "Koshary", rating: 4.5, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Abou Shakra", cuisine: "Egyptian BBQ", rating: 4.4, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" },
+        { name: "Zooba", cuisine: "Street Food", rating: 4.3, img: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400" },
+        { name: "Felfela", cuisine: "Middle Eastern", rating: 4.2, img: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400" },
+        { name: "Andrea Mariouteya", cuisine: "Local Egyptian", rating: 4.1, img: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400" }
     ]
 };
+// SFARSIT DATE RESTAURANTE EXTINSE
 
 function getUsers(){ return JSON.parse(localStorage.getItem('users')||'[]'); }
 function saveUsers(users){ localStorage.setItem('users', JSON.stringify(users)); }
@@ -579,6 +827,7 @@ function register(){
     saveUsers(users);
     msg.style.color='green';
     msg.textContent="Cont creat! Loghează-te.";
+    showLogin(); 
 }
 
 function login(){
@@ -587,7 +836,10 @@ function login(){
     const msg=document.getElementById('login-msg');
     let users=getUsers();
     let user=users.find(x=>x.username===u&&x.password===p);
-    if(user){ localStorage.setItem('currentUser',u); showApp(); } 
+    if(user){ 
+        localStorage.setItem('currentUser',u); 
+        showApp(); 
+    } 
     else{ msg.textContent="Date greșite!"; }
 }
 
@@ -600,11 +852,15 @@ function logout(){
 function showRegister(){ 
     document.getElementById('register-form').style.display='block'; 
     document.getElementById('login-form').style.display='none'; 
+    document.getElementById('reg-msg').textContent = "";
+    document.getElementById('login-msg').textContent = "";
 }
 
 function showLogin(){ 
     document.getElementById('register-form').style.display='none'; 
     document.getElementById('login-form').style.display='block'; 
+    document.getElementById('reg-msg').textContent = "";
+    document.getElementById('login-msg').textContent = "";
 }
 
 function showApp(){
@@ -614,6 +870,29 @@ function showApp(){
     document.getElementById('auth-container').style.display='none';
     document.getElementById('app-container').style.display='block';
     initWorldMap();
+    renderTripLists();
+}
+
+function storeGeneratedItinerary(city, days, data){
+    currentCity = city;
+    editableItinerary = [];
+    allCityAttractions = [];
+    currentTripIndex = null;
+    isViewingTrip = false;
+    
+    for(let i=1; i<=days; i++){
+        const dayIndex=(i-1)%data[city].length;
+        // Asigură-te că adaugi o copie a listei pentru a permite modificări locale
+        editableItinerary.push(JSON.parse(JSON.stringify(data[city][dayIndex])));
+    }
+    
+    data[city].forEach(dayList => {
+        dayList.forEach(attraction => {
+            if(!allCityAttractions.some(a => a.activity === attraction.activity)){
+                allCityAttractions.push(attraction);
+            }
+        });
+    });
 }
 
 function generateItinerary(){
@@ -623,45 +902,242 @@ function generateItinerary(){
     
     showRestaurants(city);
     
+    // Încarcă data.json - notă: această metodă necesită ca data.json să existe și să fie accesibil
     fetch('data.json')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
         .then(data => {
-            if(!data[city]){ 
-                out.innerHTML='<p>Nu există date pentru acest oraș.</p>'; 
+            if(!data[city] || data[city].length === 0){ 
+                out.innerHTML='<p>Nu există date de itinerariu pentru acest oraș.</p>'; 
                 return; 
             }
             
-            let html=`<h2>Itinerariu pentru ${city}</h2>`;
-            for(let i=1; i<=days; i++){
-                const dayIndex=(i-1)%data[city].length;
-                const dayActivities=data[city][dayIndex];
-                html+=`<div class="day">
-                    <h3>Ziua ${i}</h3>
-                    <ul class="objectives">
-                        ${dayActivities.map(a=>`<li><span class="time">${a.time}</span> ${a.activity}</li>`).join('')}
-                    </ul>
-                </div>`;
-            }
-            out.innerHTML=html;
+            storeGeneratedItinerary(city, days, data);
+            renderUpdatedItinerary();
             
-            // Afișează harta pentru prima zi
-            if(data[city][0] && data[city][0].length > 0){
-                showMap(data[city][0]);
+            if(editableItinerary[0] && editableItinerary[0].length > 0){
+                showMap(editableItinerary[0]);
+            } else {
+                initWorldMap();
             }
             
-            const daysEls = document.querySelectorAll('.day');
-            daysEls.forEach((dayEl,index)=>{
-                setTimeout(()=>{ dayEl.classList.add('show'); }, index*150);
-                const dayIndex=(index)%data[city].length;
-                dayEl.addEventListener('click',()=>{ 
-                    showMap(data[city][dayIndex]); 
+            setTimeout(() => {
+                const daysEls = document.querySelectorAll('.day');
+                daysEls.forEach((dayEl, index) => {
+                    setTimeout(() => { dayEl.classList.add('show'); }, index * 150);
+                    
+                    dayEl.removeEventListener('click', mapDayClickHandler); 
+                    dayEl.addEventListener('click', () => mapDayClickHandler(index));
                 });
-            });
+            }, 100);
         })
         .catch(err => {
-            console.error(err);
-            out.innerHTML='<p>Eroare la încărcarea datelor.</p>';
+            console.error("Eroare la generarea itinerariului:", err);
+            out.innerHTML='<p>Eroare la încărcarea datelor: ' + err.message + '</p>';
         });
+}
+
+function mapDayClickHandler(dayIndex) {
+    if (editableItinerary[dayIndex] && editableItinerary[dayIndex].length > 0) {
+        showMap(editableItinerary[dayIndex]);
+    } else {
+        alert("Nicio atracție pentru această zi de afișat pe hartă.");
+    }
+}
+
+// FUNCȚIA PENTRU ACTUALIZAREA OREI (RĂSPUNSUL ANTERIOR)
+function updateObjectiveTime(day, index, newTime) {
+    
+    const dayIndex = day - 1;
+    
+    // Validare simplă
+    if (!newTime) {
+        alert("Ora nu poate fi goală! Vă rugăm introduceți o oră validă.");
+        
+        renderUpdatedItinerary(); 
+        return;
+    }
+    
+    
+    editableItinerary[dayIndex][index].time = newTime;
+    
+    
+    sortDayByTime(dayIndex);
+    
+    
+    renderUpdatedItinerary();
+}
+
+function addObjective(day){
+    const select = document.querySelector(`.add-objective-select[data-day="${day}"]`);
+    const value = select.value;
+    if(!value) return;
+    
+    const attraction = allCityAttractions.find(a => a.activity === value);
+    if(attraction){
+        const exists = editableItinerary[day-1].find(obj => obj.activity === attraction.activity);
+        if(exists) {
+            alert("Acest obiectiv există deja în această zi!");
+            select.value = "";
+            return;
+        }
+        
+        
+        editableItinerary[day-1].push({
+            time: attraction.time,
+            activity: attraction.activity,
+            lat: attraction.lat,
+            lng: attraction.lng
+        });
+        
+        
+        sortDayByTime(day-1);
+    }
+    
+    renderUpdatedItinerary();
+    select.value = "";
+}
+
+function moveObjective(fromDay, index, toDay){
+    
+    toDay = parseInt(toDay);
+    if(isNaN(toDay) || toDay < 1 || toDay > editableItinerary.length || fromDay === toDay) return;
+    
+    const item = editableItinerary[fromDay-1].splice(index, 1)[0];
+    editableItinerary[toDay-1].push(item);
+    
+    sortDayByTime(toDay-1);
+    
+    renderUpdatedItinerary();
+}
+
+function deleteObjective(day, index) {
+    if(confirm("Sigur vrei să ștergi acest obiectiv?")) {
+        editableItinerary[day-1].splice(index, 1);
+        renderUpdatedItinerary();
+    }
+}
+
+function sortDayByTime(dayIndex) {
+    editableItinerary[dayIndex].sort((a, b) => {
+        const timeA = parseTime(a.time);
+        const timeB = parseTime(b.time);
+        return timeA - timeB;
+    });
+}
+
+function parseTime(timeStr) {
+    
+    if (timeStr === "Custom" || !timeStr) return 9999; 
+    
+    const match = timeStr.match(/(\d{1,2}):(\d{2})/);
+    if (!match) return 9999;
+    
+    const hours = parseInt(match[1]);
+    const minutes = parseInt(match[2]);
+    return hours * 60 + minutes;
+}
+
+function renderUpdatedItinerary(){
+    const out = document.getElementById("output");
+    const isPast = isViewingTrip && isTripPast(currentTripIndex);
+    
+    let html = `<h2>Itinerariu pentru ${currentCity}</h2>`;
+
+    
+    if (isViewingTrip) {
+        if (!isPast) {
+            html += `<button class="generate-btn" onclick="saveModifications()" style="margin-bottom:20px;">💾 Salvează Modificările</button>`;
+        } else {
+            html += `<div style="padding:15px; background:#ff9800; color:white; border-radius:10px; margin-bottom:20px; text-align:center;">
+                        <strong>⚠ Această călătorie a trecut - Nu poate fi modificată</strong>
+                    </div>`;
+        }
+    } else {
+        html += `<button class="generate-btn" onclick="saveModifications()" style="margin-bottom:20px;">💾 Salvează Modificările</button>`;
+    }
+    
+    for(let d=0; d<editableItinerary.length; d++){
+        
+        html += `
+        <div class="day show">
+            <h3>Ziua ${d+1}</h3>`;
+        
+        if (!isPast) {
+            html += `
+            <div class="edit-controls">
+                <select class="add-objective-select" data-day="${d+1}">
+                    <option value="">Selectează obiectiv...</option>
+                    ${allCityAttractions.map(attr => `<option value="${attr.activity}">${attr.time} - ${attr.activity}</option>`).join('')}
+                </select>
+                <button class="add-objective-btn" onclick="addObjective(${d+1})">Adaugă</button>
+            </div>`;
+        }
+            
+        html += `<ul class="objectives">
+                ${editableItinerary[d].map((a, idx) => `
+                    <li>
+                        <div style="display:inline-flex; align-items:center; gap:10px; min-width: 250px;">
+                            ${!isPast ? 
+                                
+                                `<input type="time" value="${a.time}" onchange="updateObjectiveTime(${d+1}, ${idx}, this.value)" style="padding:5px; border-radius:5px; border:1px solid #e0e0e0; font-size:14px; color:#764ba2; font-weight:bold; margin-right: 5px;">` :
+                                
+                                `<span class="time">${a.time}</span>`
+                            } 
+                            <span>${a.activity}</span>
+                        </div>
+                        <div style="float:right; display:flex; gap:5px; align-items:center;">
+                            ${!isPast ? `
+                                <select class="move-select" onchange="moveObjective(${d+1}, ${idx}, this.value)">
+                                    <option value="">Mută în zi...</option>
+                                    ${editableItinerary.map((_, di) => `<option value="${di+1}">Ziua ${di+1}</option>`).join('')}
+                                </select>
+                                <button onclick="deleteObjective(${d+1}, ${idx})" style="background:#ff5252; color:white; border:none; padding:4px 8px; border-radius:5px; cursor:pointer; font-size:14px;">🗑</button>
+                            ` : ''}
+                        </div>
+                    </li>
+                `).join("")}
+            </ul>
+        </div>`;
+    }
+    
+    out.innerHTML = html;
+    
+    
+    setTimeout(() => {
+        const daysEls = document.querySelectorAll('.day');
+        daysEls.forEach((dayEl, index) => {
+            dayEl.removeEventListener('click', mapDayClickHandler);
+            dayEl.addEventListener('click', () => mapDayClickHandler(index));
+        });
+    }, 100);
+}
+
+function saveModifications(){
+    if (isViewingTrip && currentTripIndex !== null) {
+        updateExistingTrip(currentTripIndex);
+        alert(`Modificările pentru călătoria ${currentCity} au fost salvate!`);
+    } else if (currentCity) {
+        
+        alert(`Modificările pentru itinerariul curent ${currentCity} au fost salvate (temporar). Salvați călătoria pentru a o păstra!`);
+    } else {
+        alert("Nu este generat niciun itinerariu pentru a fi salvat.");
+    }
+
+}
+
+function updateExistingTrip(index) {
+    const trips = JSON.parse(localStorage.getItem("trips") || "[]");
+    if (trips[index] && !isTripPast(index)) { // Se asigură că nu salvează modificări la cele trecute
+        trips[index].itinerary = JSON.parse(JSON.stringify(editableItinerary));
+        trips[index].lastModified = new Date().toISOString();
+        localStorage.setItem("trips", JSON.stringify(trips));
+        renderTripLists();
+    } else if (isTripPast(index)) {
+         alert("Nu se pot salva modificări pentru o călătorie trecută!");
+    }
 }
 
 function showMap(dayActivities){
@@ -700,9 +1176,19 @@ function showRestaurants(city) {
     
     restaurants.forEach(rest => {
         const stars = '⭐'.repeat(Math.floor(rest.rating));
-        const card = document.createElement('div');
-        card.className = 'restaurant-card';
-        card.innerHTML = `
+        
+    
+        const searchQuery = encodeURIComponent(`${rest.name} ${city}`);
+        const searchUrl = `https://www.google.com/search?q=${searchQuery}`;
+        
+        
+        const cardLink = document.createElement('a');
+        cardLink.href = searchUrl;
+        cardLink.target = "_blank"; // Deschide în tab nou
+        cardLink.className = 'restaurant-card'; // Folosește clasa existentă pentru stilizare
+        
+       
+        cardLink.innerHTML = `
             <img src="${rest.img}" class="restaurant-img" alt="${rest.name}">
             <div class="restaurant-info">
                 <div class="restaurant-name">${rest.name}</div>
@@ -710,7 +1196,7 @@ function showRestaurants(city) {
                 <div><span class="stars">${stars}</span> ${rest.rating}</div>
             </div>
         `;
-        list.appendChild(card);
+        list.appendChild(cardLink);
     });
 }
 
@@ -731,6 +1217,9 @@ const closeMenuBtn = document.getElementById("closeMenuBtn");
 
 historyBtn.addEventListener("click", () => {
     rightMenu.style.display = rightMenu.style.display === 'block' ? 'none' : 'block';
+    if(rightMenu.style.display === 'block') {
+        renderTripLists();
+    }
 });
 
 closeMenuBtn.addEventListener("click", () => {
@@ -738,14 +1227,168 @@ closeMenuBtn.addEventListener("click", () => {
 });
 
 function saveCurrentTrip() {
-    const city = document.getElementById("city").value;
-    const days = document.getElementById("days").value;
-    const list = document.getElementById("pastTripsList");
-    const li = document.createElement("li");
-    li.style.cssText = "padding:10px; background:#f0f0f0; margin:5px 0; border-radius:8px;";
-    li.innerHTML = `<strong>${city}</strong> - ${days} zile<br><small>${new Date().toLocaleDateString()}</small>`;
-    list.insertBefore(li, list.firstChild);
-    alert(`Trip salvat: ${city}`);
+    if (!currentCity || editableItinerary.length === 0) {
+        alert("Generează mai întâi un itinerariu!");
+        return;
+    }
+    
+    
+    const defaultDate = new Date().toISOString().split('T')[0];
+    const tripDateInput = prompt("Introdu data călătoriei (YYYY-MM-DD):", defaultDate);
+    
+    if (!tripDateInput) return;
+
+    
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(tripDateInput)) {
+        alert("Formatul datei este invalid. Folosește YYYY-MM-DD.");
+        return;
+    }
+    
+    const trip = {
+        city: currentCity,
+        days: editableItinerary.length,
+        itinerary: JSON.parse(JSON.stringify(editableItinerary)),
+        tripDate: tripDateInput,
+        savedDate: new Date().toISOString()
+    };
+
+    let trips = JSON.parse(localStorage.getItem("trips") || "[]");
+    trips.push(trip);
+    localStorage.setItem("trips", JSON.stringify(trips));
+
+    renderTripLists();
+    alert(`Trip salvat: ${trip.city} - ${trip.tripDate}`);
+}
+
+function isTripPast(index) {
+    const trips = JSON.parse(localStorage.getItem("trips") || "[]");
+    if (!trips[index] || !trips[index].tripDate) return false;
+    
+    const tripDate = new Date(trips[index].tripDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return tripDate < today;
+}
+
+function renderTripLists() {
+    const trips = JSON.parse(localStorage.getItem("trips") || "[]");
+    const pastList = document.getElementById("pastTripsList");
+    const futureList = document.getElementById("futureTripsList");
+
+    pastList.innerHTML = "";
+    futureList.innerHTML = "";
+    
+   
+    trips.sort((a, b) => new Date(a.tripDate) - new Date(b.tripDate));
+
+    trips.forEach((trip, index) => {
+        const isPast = isTripPast(index);
+        
+        const li = document.createElement("li");
+        li.style.cssText = "padding:10px; background:#f0f0f0; margin:5px 0; border-radius:8px; cursor:pointer;";
+        
+        const badge = isPast ? 
+            '<span class="trip-badge badge-past">TRECUT</span>' : 
+            '<span class="trip-badge badge-future">VIITOR</span>';
+        
+        li.innerHTML = `
+            <strong>${trip.city}</strong> ${badge}<br>
+            <small>📅 ${trip.tripDate}</small><br>
+            <small>🗺 ${trip.days} zile</small>
+        `;
+
+        li.onclick = () => openTrip(index);
+        
+        const deleteBtn = document.createElement("button");
+        deleteBtn.innerHTML = "🗑";
+        deleteBtn.style.cssText = "float:right; background:#ff5252; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; margin-left:10px;";
+        deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteTrip(index);
+        };
+        li.appendChild(deleteBtn);
+
+        if (isPast) {
+            pastList.appendChild(li);
+        } else {
+            futureList.appendChild(li);
+        }
+    });
+}
+
+function openTrip(index) {
+    const trips = JSON.parse(localStorage.getItem("trips") || "[]");
+    if (!trips[index]) return;
+    
+    const trip = trips[index];
+    
+    currentCity = trip.city;
+    
+    editableItinerary = JSON.parse(JSON.stringify(trip.itinerary)); 
+    currentTripIndex = index;
+    isViewingTrip = true;
+    
+
+    fetch('data.json')
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .then(data => {
+            if (data[trip.city]) {
+                allCityAttractions = [];
+                data[trip.city].forEach(dayList => {
+                    dayList.forEach(attraction => {
+                        
+                        if(!allCityAttractions.some(a => a.activity === attraction.activity)){
+                            allCityAttractions.push(attraction);
+                        }
+                    });
+                });
+            }
+            
+            renderUpdatedItinerary();
+            showRestaurants(trip.city);
+            
+            if (editableItinerary[0] && editableItinerary[0].length > 0) {
+                showMap(editableItinerary[0]);
+            } else {
+                initWorldMap();
+            }
+            
+            document.getElementById("rightMenu").style.display = 'none';
+            
+            setTimeout(() => {
+                const daysEls = document.querySelectorAll('.day');
+                daysEls.forEach((dayEl, idx) => {
+                    dayEl.addEventListener('click', () => { 
+                        showMap(editableItinerary[idx]); 
+                    });
+                });
+            }, 100);
+        })
+        .catch(err => {
+             console.error("Eroare la deschiderea călătoriei:", err);
+            document.getElementById("output").innerHTML='<p>Eroare la încărcarea datelor călătoriei: ' + err.message + '</p>';
+        });
+}
+
+function deleteTrip(index) {
+    if (!confirm("Sigur vrei să ștergi această călătorie?")) return;
+    
+    let trips = JSON.parse(localStorage.getItem("trips") || "[]");
+    
+    trips.splice(index, 1);
+    localStorage.setItem("trips", JSON.stringify(trips));
+    
+    
+    if (index === currentTripIndex) {
+        currentTripIndex = null;
+        isViewingTrip = false;
+    }
+    
+    renderTripLists();
 }
 
 function addTodo() {
@@ -754,8 +1397,9 @@ function addTodo() {
     if (!task) return;
     const list = document.getElementById("toDoList");
     const li = document.createElement("li");
+    
     li.innerHTML = `<span><input type="checkbox"> ${task}</span>
-        <button onclick="this.parentElement.remove()" style="background:#ff5252; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">🗑️</button>`;
+        <button onclick="this.closest('li').remove()" style="background:#ff5252; color:white; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">🗑</button>`;
     list.appendChild(li);
     input.value = "";
 }
@@ -767,6 +1411,7 @@ document.getElementById("todoInput")?.addEventListener("keypress", (e) => {
 document.querySelectorAll('.faq-question').forEach(btn => {
     btn.addEventListener('click', () => {
         const answer = btn.nextElementSibling;
+        
         answer.style.display = answer.style.display === 'block' ? 'none' : 'block';
     });
 });
@@ -775,6 +1420,7 @@ window.onload=()=>{
     const u=localStorage.getItem('currentUser');
     if(u) showApp();
 };
+
 </script>
 </body>
 </html>
